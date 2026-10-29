@@ -16,3 +16,9 @@ Tests check repeated migration and seed, VTT and TXT input, timestamps, exact-qu
 The workflow also defines Windows and Linux jobs with a PostgreSQL service job. Defining a job is not evidence it ran. Hosted results are recorded below after the private push.
 
 The page preview is a local check of the unchanged shared page template. A pushed page is not evidence the production deployment has completed. Publication belongs to the nightly runner.
+
+## Private push and hosted checks
+
+The private repo was pushed on 29 October 2026. GitHub confirms visibility PRIVATE. Hosted run https://github.com/Enterprise-DNA-OS/conversation-review-for-claude-code/actions/runs/40970460441 did not execute any steps. Its Windows job annotation says the job was not started because recent account payments failed or the spending limit needs increasing. Windows is therefore unverified; this is not a test failure. The separate local Linux and PostgreSQL 17.10 results above passed.
+
+The page was pushed to Landing Pages main in commit dd67ccd56b631323e63efcbb4c227653aaf3fe83 with noindex and live=false. The public URL returned HTTP 404 at the post-push check, so production availability was not verified. Its local rendering, three ownership paths, attributed booking links and real demonstrations passed inspection. The nightly runner owns publication.
