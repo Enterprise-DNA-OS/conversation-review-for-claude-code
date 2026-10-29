@@ -1,0 +1,57 @@
+import assert from 'node:assert/strict';import fs from 'node:fs';import os from 'node:os';import path from 'node:path';import {spawnSync} from 'node:child_process';
+import {getDb,REPO_ROOT} from './lib/db.mjs';import {migrate} from './migrate.mjs';import {seed} from './seed.mjs';
+import {execute,reads,resolve,parseTranscript,date,integer} from './lib/conversations.mjs';import {page,table} from './lib/render.mjs';
+const testUrl=process.env.TEST_POSTGRES_URL;
+if(testUrl){const u=new URL(testUrl);assert.equal(process.env.CI,'true');assert.ok(['localhost','127.0.0.1'].includes(u.hostname));assert.equal(u.pathname,'/ci_test');}
+const temp=fs.mkdtempSync(path.join(os.tmpdir(),'conversation-test-'));process.env.DATABASE_URL=testUrl||'';process.env.DATA_DIR=path.join(temp,'db');process.env.OUTPUT_DIR=temp;
+let db;const today=new Date().toISOString().slice(0,10),future=new Date(Date.now()+14*86400000).toISOString().slice(0,10);
+const run=(cmd,args=[],o={})=>execute(db,cmd,args,o), count=async tab=>Number((await db.query(`select count(*) n from ${tab}`))[0].n);
+try{
+ db=await getDb();assert.equal((await migrate(db)).ran.length,1);assert.equal((await migrate(db)).ran.length,0);await seed(db);await seed(db);assert.equal(await count('meetings'),3);assert.equal(await count('segments'),6);assert.equal(await count('commitments'),2);
+ for(const cmd of Object.keys(reads))assert.ok(Array.isArray(await run(cmd)),cmd);
+ assert.equal((await run('coaching'))[0].average_score,'4.00');assert.equal(Number((await run('topics'))[0].mentions),1);assert.equal((await run('commitments-due')).length,2);
+ assert.equal((await run('insights')).length,10);assert.equal((await run('weekly-review')).calls.length,3);
+ await assert.rejects(()=>resolve(db,'meetings','harbour'),e=>e.candidates.length===2);assert.equal((await resolve(db,'meetings','HARBOUR DISCOVERY')).id,'10000000-0000-0000-0000-000000000001');
+ assert.throws(()=>date('2026-02-30'),/Invalid/);assert.throws(()=>integer('1.2','score'),/integer/);
+ assert.throws(()=>parseTranscript('empty','.vtt'),/header/);assert.throws(()=>parseTranscript('WEBVTT\n\n00:00:05.000 --> 00:00:04.000\nx','.vtt'),/duration/);
+ assert.throws(()=>parseTranscript('WEBVTT\n\n00:61:05.000 --> 00:62:04.000\nx','.vtt'),/timestamp/);
+ const cues=parseTranscript('WEBVTT\r\n\r\nNOTE note\r\nignored\r\n\r\n1\r\n00:00:01.000 --> 00:00:02.000\r\n<v Person>A &amp; B\r\nsecond line</v>\r\n','.vtt');assert.equal(cues[0].speaker,'Person');assert.equal(cues[0].body,'A & B\nsecond line');assert.equal(cues[0].start_ms,1000);
+ assert.equal(parseTranscript('Speaker: one\n\nOther: two','.txt').length,2);assert.throws(()=>parseTranscript(' \n','.txt'),/empty/);
+ const opts={actor:'Tester','source-id':'test-import',title:'Test call <script>',account:'Example account',owner:'Tester',date:today};
+ const file=path.join(REPO_ROOT,'examples/avoma.vtt');
+ await assert.rejects(()=>run('import',['avoma',file],{...opts,actor:''}),/actor/);
+ assert.equal((await run('import',['avoma',file],{...opts,'dry-run':true})).inserted,1);assert.equal(await count('meetings'),3);
+ const imported=await run('import',['avoma',file],opts);assert.equal(imported.segments,2);assert.equal((await run('import',['avoma',file],opts)).skipped,1);
+ await assert.rejects(()=>run('import',['avoma',file],{...opts,title:'Changed'}),/changed transcript/);
+ assert.equal((await run('meeting',[imported.id])).meeting.review_state,'Unreviewed');assert.equal((await run('transcript',[imported.id])).length,2);
+ const add={actor:'Tester',segment:'2',quote:'I will prepare the delivery plan',title:'Prepare plan',owner:'Tester',due:future};
+ await assert.rejects(()=>run('add-commitment',[imported.id],add),/privacy/);
+ await assert.rejects(()=>run('review-meeting',[imported.id],{actor:'Tester',purpose:'Service review',notice:'Actual notice reference',retention:today}),/future/);
+ await run('review-meeting',[imported.id],{actor:'Tester',purpose:'Service review',notice:'Actual notice reference',retention:future});
+ await assert.rejects(()=>run('add-commitment',[imported.id],{...add,quote:'Invented promise'}),/exactly/);
+ await assert.rejects(()=>run('add-commitment',[imported.id],{...add,due:'2001-01-01'}),/precedes/);
+ const action=await run('add-commitment',[imported.id],add);assert.equal(action.status,'open');
+ await run('observe',[imported.id],{actor:'Tester',segment:'1',quote:'We need a delivery plan',topic:'decision blocker',note:'Plan requested'});
+ const score={actor:'Tester',segment:'2',quote:'for your review',criterion:'next step',score:'4',note:'Explicit deliverable'};
+ await assert.rejects(()=>run('score-call',[imported.id],{...score,score:'6'}),/range/);
+ await run('score-call',[imported.id],score);await assert.rejects(()=>run('score-call',[imported.id],score),/unique/);
+ for(const cmd of ['draft-follow-up','draft-coaching','draft-weekly-brief']){const result=await run(cmd,cmd==='draft-weekly-brief'?[]:[imported.id]);assert.ok(fs.readFileSync(result.file,'utf8').includes('Internal draft'));}
+ await db.query('update meetings set retention_review_on=current_date where id=$1',[imported.id]);await assert.rejects(()=>run('draft-follow-up',[imported.id]),/privacy/);assert.ok(!(await run('coaching')).some(r=>r.owner==='Tester'));
+ await run('resolve-commitment',[action.id],{actor:'Tester',status:'done',note:'Delivered and checked'});await assert.rejects(()=>run('resolve-commitment',[action.id],{actor:'Tester',status:'done',note:'Again'}),/already/);
+ await run('log',[imported.id],{actor:'Tester',note:'Reviewed outcome'});assert.ok((await run('activity')).length>=6);
+ await assert.rejects(()=>db.query("update commitments set quote='Fabricated quote' where id=$1",[action.id]),/quote/);
+ await assert.rejects(()=>db.query("update activity set detail='changed'"),/append-only/);
+ const archive=await run('export');assert.equal(JSON.parse(fs.readFileSync(archive.file)).records.meetings.length,4);
+ const bad=path.join(temp,'bad.vtt');fs.writeFileSync(bad,'WEBVTT\n\n00:00:03.000 --> 00:00:01.000\nBad\n');await assert.rejects(()=>run('import',['avoma',bad],{...opts,'source-id':'bad'}));assert.equal(await count('meetings'),4);
+ assert.equal((await run('import',['avoma',path.join(REPO_ROOT,'examples/avoma.txt')],{...opts,'source-id':'text',title:'Text call'})).segments,2);
+ await db.exec('create role ci_read_test; grant usage on schema public to ci_read_test; grant select on meeting_review to ci_read_test; set role ci_read_test');await assert.rejects(()=>db.query('select * from meeting_review'),/permission denied/);await db.exec('reset role');
+ const html=page({title:'Report',sections:[{title:'Rows',html:table([{value:'<script>alert(1)</script>'}])}]});assert.ok(html.includes('&lt;script&gt;'));assert.ok(!html.includes('<script>'));
+ await db.close();db=null;
+ const child=(args,expected=0)=>{const p=spawnSync(process.execPath,args,{cwd:REPO_ROOT,env:process.env,encoding:'utf8'});assert.equal(p.status,expected,p.stderr||p.error?.message);return p;};
+ child(['scripts/conversations.mjs','--help']);assert.equal(JSON.parse(child(['scripts/conversations.mjs','meetings','--json']).stdout).length,5);
+ assert.equal(JSON.parse(child(['scripts/conversations.mjs','meeting','Harbour','--json'],1).stderr).candidates.length,2);
+ child(['scripts/conversations.mjs','meetings','--actor=x'],1);child(['scripts/conversations.mjs','export','ignored'],1);child(['scripts/conversations.mjs','unknown'],1);
+ child(['scripts/view.mjs']);child(['scripts/docs.mjs']);assert.equal(fs.readdirSync(path.join(temp,'views')).length,3);
+ const briefs=fs.readdirSync(path.join(temp,'docs-out/call-brief'));assert.equal(briefs.length,5);assert.ok(briefs.some(f=>fs.readFileSync(path.join(temp,'docs-out/call-brief',f),'utf8').includes('&lt;script&gt;')));
+ console.log('PASS: repeatable migration/seed, every domain command, VTT/TXT parsing, evidence quotes, review gates, retention expiry, score limits, ambiguity, import dry-run/repeat/conflict, append-only activity, private archive, restricted roles and escaped reports.');
+}finally{if(db)await db.close();fs.rmSync(temp,{recursive:true,force:true});}

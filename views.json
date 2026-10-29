@@ -1,13 +1,37 @@
 [
   {
     "name": "week",
-    "title": "This week",
-    "subtitle": "Conversation Review for Claude Code: what needs attention, rendered by npm run view",
+    "title": "This week: promises and call reviews",
     "sections": [
       {
-        "title": "Needs attention",
-        "note": "TODO(author): point this at the industry's attention view (overdue, stuck, quiet).",
-        "sql": "select 'replace me' as item, 'TODO(author)' as why"
+        "title": "Commitments due",
+        "sql": "select title,account,owner,due_on,days_overdue,review_state from commitment_review where status='open' order by due_on"
+      },
+      {
+        "title": "Calls needing review",
+        "sql": "select title,owner,review_state from meeting_review where review_state<>'Ready' order by title"
+      }
+    ]
+  },
+  {
+    "name": "coaching",
+    "title": "Coaching from reviewed conversations",
+    "sections": [
+      {
+        "title": "Scored criteria",
+        "note": "Manual 0 to 5 scores. Only calls currently cleared for use are included. These are not automated performance ratings.",
+        "sql": "select * from coaching_review order by owner,criterion"
+      }
+    ]
+  },
+  {
+    "name": "privacy",
+    "title": "Collection and retention review",
+    "sections": [
+      {
+        "title": "Record exceptions",
+        "note": "Operational checks, not certification of recording law compliance.",
+        "sql": "select title,owner,rule,issue from privacy_exceptions order by rule,title"
       }
     ]
   }

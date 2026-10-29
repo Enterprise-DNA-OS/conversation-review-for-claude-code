@@ -1,115 +1,92 @@
-<h1 align="center">Conversation Review for Claude Code</h1>
+# Conversation Review for Claude Code
 
-<p align="center">
-  <strong>The open-source conversation review desk that is just a database and Claude Code.</strong>
-</p>
+Turn exported conversations into promises you can trace, call reviews you can check and coaching notes you can own. Your transcripts and follow-through in a private database. MIT licensed. Built by Enterprise DNA.
 
-<p align="center">
-  Created by <a href="https://www.enterprisedna.co"><strong>Enterprise DNA</strong></a>. Free and open source. Works with Claude Code, Codex, OpenCode or Cursor.
-</p>
+| Do it yourself | We customise it | We run it for you |
+|---|---|---|
+| Free. Install the base and import your authorised transcripts. | Your review criteria, fields, reports and capture connections. | Installed and operated through Omni by Enterprise DNA. One setup fee, then a retainer. |
+| [Quick start](#quick-start) | [Get your version built](https://enterprisedna.co/omni/book/?offer=replace-software&utm_campaign=avoma&utm_medium=readme) | [Talk to Sam](https://enterprisedna.co/omni/book/?offer=replace-software&utm_campaign=avoma&utm_medium=readme) |
 
-<!-- three-doors -->
-<table align="center">
-  <tr>
-    <td align="center"><strong>Do it yourself</strong><br/>Clone it, run it, own it. Free, MIT.<br/><a href="#quick-start">Quick start</a></td>
-    <td align="center"><strong>We customise it</strong><br/>Your fields, your rules, your Avoma data brought across.<br/><a href="https://enterprisedna.co/omni/book/?utm_source=github&utm_medium=readme&utm_campaign=avoma">Book a call</a></td>
-    <td align="center"><strong>We run it for you</strong><br/>Installed, connected and operated inside Omni. Setup fee, then a retainer.<br/><a href="https://enterprisedna.co/omni/instead-of/avoma?utm_source=github&utm_medium=readme&utm_campaign=avoma">How it works</a></td>
-  </tr>
-</table>
-
-<p align="center">
-  <a href="#what-is-this">What is this</a> &bull;
-  <a href="#why-no-front-end">Why no front end</a> &bull;
-  <a href="#quick-start">Quick start</a> &bull;
-  <a href="#the-commands">Commands</a> &bull;
-  <a href="#instead-of-avoma">Instead of Avoma</a> &bull;
-  <a href="#want-it-installed-and-run-for-you">Installed for you</a> &bull;
-  <a href="#license">License</a>
-</p>
-
-<p align="center">
-  <img src="https://img.shields.io/badge/Node-20+-339933?style=flat-square" alt="Node 20+" />
-  <img src="https://img.shields.io/badge/PostgreSQL-any-336791?style=flat-square" alt="PostgreSQL" />
-  <img src="https://img.shields.io/badge/PGlite-embedded-3ecf8e?style=flat-square" alt="PGlite" />
-  <img src="https://img.shields.io/badge/License-MIT-yellow?style=flat-square" alt="MIT License" />
-</p>
-
----
-
-## What is this
-
-Conversation Review for Claude Code does the job you pay Avoma for, as a Postgres database and a set of agent commands. There is no web front end. You open the folder in [Claude Code](https://claude.com/claude-code) (or Codex, OpenCode, Cursor: see `AGENTS.md`) and ask for what you want in plain language. It runs the right query, and it can answer questions the Avoma dashboard cannot.
-
-<!-- TODO(author): the annual bill. One sentence: what a 10 to 50 person business typically pays Avoma per year, all in, with a source. -->
-
-Want the same thing with a web front end, or built on a different stack? That is a customisation, and it is exactly what Enterprise DNA does: [book a call](https://enterprisedna.co/omni/book/?utm_source=github&utm_medium=readme&utm_campaign=avoma).
-
-<!-- TODO(author): two or three sentences on what this specific product covers and who it is for. -->
-
-## Why no front end
-
-- The front end was only ever there because the database was hard to talk to. That is no longer true.
-- Your data sits in plain Postgres tables you own. Any tool can read them. No export, no lock-in.
-- No seats, no tiers, no add-ons. Read [docs/why-no-front-end.md](docs/why-no-front-end.md) for the honest trade-offs too.
+Avoma publishes separate recorder and conversation-review charges. This base covers work after a transcript exists. Keep or connect a recorder and transcription service for ongoing capture. It makes no automatic call-scoring, speech-recognition or CRM-sync claim. [Selection evidence and scope](docs/research.md).
 
 ## Quick start
-
-Sixty seconds, no database install (an embedded Postgres runs inside Node):
 
 ```bash
 git clone https://github.com/Enterprise-DNA-OS/conversation-review-for-claude-code.git
 cd conversation-review-for-claude-code
 npm install
+npm test
 npm run demo
 ```
 
-Then open the folder in Claude Code and type a slash command. <!-- TODO(author): name the first command to try. -->
+Use Node 22. Tests and demo create temporary fictional data and ignore DATABASE_URL. For a persistent fictional demo, run npm run migrate and npm run seed. For real work, migrate an empty private database and do not seed it. PGlite stores local data in .data/db; DATABASE_URL selects your own PostgreSQL 15 or later database. Backups and access are your responsibility.
 
-### Use it with your own Postgres or Supabase
+Open this folder in Claude Code, Codex, OpenCode or Cursor. All follow CLAUDE.md and the same 25 command recipes. The database is the product and the agent is the door. Agent subscriptions are separate. No model calls are made by the code.
 
-Copy `.env.example` to `.env`, set `DATABASE_URL`, then `npm run migrate`. Same commands, shared data, no per-seat fee.
-
-## The commands
-
-<!-- TODO(author): a table of the slash commands in .claude/commands and what each one does. -->
-
-| Command | What it does |
-|---|---|
-| `/...` | ... |
-
-## Instead of Avoma
-
-<!-- TODO(author): how to bring data across from Avoma; link docs/replace-avoma.md -->
-
-## Architecture
-
-```
-conversation-review-for-claude-code/
-  CLAUDE.md                 how the operator wants this run (routing table + house rules)
-  AGENTS.md                 the same, for Codex / OpenCode / Cursor / Gemini CLI
-  .claude/commands/         the slash commands
-  scripts/                  the CLI the commands drive
-  scripts/lib/db.mjs        one adapter: DATABASE_URL (pg) or embedded PGlite
-  supabase/migrations/      plain SQL schema
-  supabase/seed.sql         demo data
-  docs/                     the thesis and the migration guide
+```bash
+node scripts/conversations.mjs call-review
+node scripts/conversations.mjs commitments-due
+node scripts/conversations.mjs coaching
+npm run view
+npm run docs
 ```
 
-## Built for coding agents
+Three read-only reports cover the week, coaching and privacy exceptions. Three document types produce call briefs, coaching notes and retention working papers. Change your business name, logo and colours in brand.json. /new-view adds another report.
 
-The database, CLI and command recipes work with Claude Code, Codex, OpenCode or Cursor. Ask your coding agent for a new command and have it implement and test the change against the same records.
+## Five weekly rituals
 
-## Contributing
+- /call-review: read new transcripts and their review status.
+- /commitments-due: find overdue promises and dates in the next week.
+- /coaching: review scored criteria with the supporting passages.
+- /topics: compare recorded objections and themes by account.
+- /weekly-review: combine call-review, commitments-due and compliance for Monday.
 
-Issues and pull requests are welcome. Keep the shape: plain SQL, a small CLI, a slash command per recurring job, no front end.
+/import loads a downloaded transcript. /review-meeting records its checked purpose, notice evidence and next retention review. /add-commitment, /observe and /score-call require exact words from a numbered passage. The agent can propose the interpretation, and the operator checks it. The code does not infer promises, score people automatically or guess what Friday meant.
 
-## Want it installed and run for you?
+/draft-follow-up, /draft-coaching and /draft-weekly-brief write private local drafts. Nothing sends. Scores and follow-up drafts stop when the call's review becomes due. /compliance cites NZ collection and retention principles and Australian retention guidance in [docs/compliance.md](docs/compliance.md). These are limited record checks, not legal certification or a permission to record.
 
-Enterprise DNA installs Conversation Review for Claude Code for your business, migrates your Avoma data, connects it to the rest of your tools, and runs it for you as part of **Omni**, our managed Command Center. One setup fee, then a monthly retainer.
+## Bring an Avoma transcript
 
-- Book a call: [enterprisedna.co/omni/book](https://enterprisedna.co/omni/book/?offer=replace-software&utm_source=github&utm_medium=readme&utm_campaign=avoma)
-- Read more: [enterprisedna.co/omni/instead-of/avoma](https://enterprisedna.co/omni/instead-of/avoma?utm_source=github&utm_medium=readme&utm_campaign=avoma)
+Download VTT or TXT from the meeting's Download menu. Record the meeting ID, date, account and owner separately. The importer accepts the documented transcript formats directly, with that metadata supplied as options.
 
-## License
+```bash
+node scripts/conversations.mjs import avoma examples/avoma.vtt --source-id=example-call --title="Example call" --account="Example account" --owner="Operator" --date=2026-10-28 --actor="Operator" --dry-run
+```
 
-MIT. Copyright (c) 2026 Enterprise DNA.
+Check the dry run, then omit --dry-run. The same source ID and content skip on a repeat; changed content fails without overwriting history. Imports remain unreviewed. Audio, video, Avoma notes and scorecards are separate from transcript downloads. [Switching guide](docs/replace-avoma.md).
+
+## Ten questions answered from your records
+
+/insights answers these questions today. They demonstrate reporting across your evidence and review rules; they are not a claim that Avoma cannot produce a comparable report.
+
+1. Which commitments are overdue on calls cleared for use?
+2. Which open commitments rely on calls needing privacy review?
+3. Which accounts have repeated decision blockers?
+4. Which calls still lack a recorded next step?
+5. Who owns the oldest unfinished promise?
+6. Which recent calls have no coaching review?
+7. Which calls have no collection notice evidence?
+8. Which retained calls need a decision about keeping them?
+9. Which owners have low scores on calls cleared for use?
+10. Which accounts have more than one open promise?
+
+## Your first hour: ten things to ask for
+
+1. Show the new calls and their owners.
+2. Read the discovery call and show the numbered passages.
+3. Propose next steps with exact supporting quotes.
+4. Show which promises are overdue.
+5. Record who completed the sample report and when.
+6. Show the calls with missing notice evidence.
+7. Compare our decision-process coaching scores.
+8. Draft an internal follow-up from the approved record.
+9. Put our business name on the weekly report.
+10. Add our call-type field with /customise.
+
+## Access and verification
+
+This is a single-business desk for trusted operators. It stores plaintext transcripts locally or in your database. Use disk encryption and restricted access for private records. Row security and revoked public permissions prevent ordinary unprivileged access, but database owners bypass these protections. Actor labels are not authenticated identities. Activity is append-only through normal operations, not tamper-proof against an owner.
+
+export writes a full private JSON archive; use normal database backups for disaster recovery. Retention decisions must include downloads, passages, quotes, notes, drafts, reports, archives and backups. A shared deployment needs authenticated access, tested backups and an agreed disposal process.
+
+npm test exercises both successful and refused operations, exact evidence, stale review gates, repeated imports, ambiguity, restricted roles and escaped HTML. GitHub Actions is configured for Windows and Linux plus a PostgreSQL service. [Verification record](docs/verification.md), [all CLI commands](docs/cli.md), [scope without a front end](docs/why-no-front-end.md).

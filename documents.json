@@ -1,11 +1,53 @@
 [
   {
-    "name": "example",
-    "title": "TODO(author): the first document this industry must produce",
-    "for_each": "select gen_random_uuid() as id, 'Example' as name",
-    "file": "name",
+    "name": "call-brief",
+    "title": "Call brief",
+    "for_each": "select id,title from meetings",
+    "file": "title",
     "sections": [
-      { "title": "Details", "sql": "select 'replace me' as item, $1::text as record_id" }
+      {
+        "title": "Call record",
+        "layout": "record",
+        "sql": "select title,account,owner,held_on,review_state,retention_review_on from meeting_review where id=$1"
+      },
+      {
+        "title": "Recorded commitments",
+        "sql": "select title,owner,due_on,status,quote from commitments where meeting_id=$1 order by due_on"
+      },
+      {
+        "title": "Reviewer observations",
+        "sql": "select topic,note,quote,reviewer from observations where meeting_id=$1 order by topic"
+      }
+    ]
+  },
+  {
+    "name": "coaching-note",
+    "title": "Coaching review note",
+    "for_each": "select id,title from meeting_review where review_state='Ready'",
+    "file": "title",
+    "sections": [
+      {
+        "title": "Scoring evidence",
+        "note": "Human or agent-proposed reviews require operator checking. No automatic inference from audio.",
+        "sql": "select criterion,score,note,quote,reviewer from scores where meeting_id=$1 order by criterion"
+      }
+    ]
+  },
+  {
+    "name": "privacy-review",
+    "title": "Transcript retention working paper",
+    "for_each": "select id,title from meetings",
+    "file": "title",
+    "sections": [
+      {
+        "title": "Purpose and recorded notice",
+        "layout": "record",
+        "sql": "select title,purpose,notice_evidence,reviewed_by,reviewed_on,retention_review_on from meetings where id=$1"
+      },
+      {
+        "title": "Exceptions",
+        "sql": "select rule,issue from privacy_exceptions where id=$1"
+      }
     ]
   }
 ]
